@@ -26,7 +26,11 @@ public class Document {
         this.documentSections = documentSections;
         this.documentSectionMap = new TreeMap<>();
         
-        for (DocumentSection section:documentSections) {
+        initSectionMap();
+    }
+    
+    private void initSectionMap() {
+        for (DocumentSection section:this.documentSections) {
             if (section.getId()!=null) {
                 documentSectionMap.put(section.getId(), section);
             }
@@ -41,11 +45,11 @@ public class Document {
         }
         return new Document(source, sections);
     }
-
+    
     public String getSource() {
         return source;
     }
-    
+
     public List<DocumentSection> getSections() {
         return documentSections;
     }

@@ -7,16 +7,20 @@ package com.umranium.longmark.model;
 import com.umranium.longmark.common.Constants;
 import com.umranium.longmark.common.FileNameHelper;
 import com.umranium.longmark.json.JsonCommon;
+import com.umranium.longmark.storage.MalformedDataFileException;
 import com.umranium.longmark.ui.pdftext.PageSizing;
 import com.umranium.longmark.ui.pdftext.PdfText;
 import com.umranium.longmark.ui.pdftext.PdfText.MatchedText;
 import com.umranium.longmark.ui.pdftext.TextLocation;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.util.PDFImageWriter;
@@ -29,16 +33,23 @@ public class DocumentExtractor {
     
     private static final int DEFAULT_USER_SPACE_UNIT_DPI = 72;
     private static final String FIRST_SEGMENT_ID = "First Segment";
+    
     private String source;
     private File pdfFile;
+    private File extrasCsvFile;
     private Splitter[] splitters;
+    
     private List<DocumentSection> documentSections;
+    private DocExtrasStorage extrasStorage;
 
     public DocumentExtractor(String source, File pdfFile, Splitter[] splitters) {
         this.source = source;
         this.pdfFile = pdfFile;
+        this.extrasCsvFile = new File(pdfFile.getParentFile(),
+                pdfFile.getName()
+                        .replaceAll("\\..*", String.format("-extras.csv"))
+                );
         this.splitters = splitters;
-        this.documentSections = new ArrayList<>();
     }
 
     private String woWs(String text) {
@@ -72,11 +83,25 @@ public class DocumentExtractor {
             images.add(pageImg.getSubimage(x1, y1, x2 - x1, y2 - y1));
         }
         DocumentSection documentSection = new DocumentSection(
-                splitId, pdfText, images, imgScale);
+                splitId, pdfText, extrasStorage, images, imgScale);
         documentSections.add(documentSection);
     }
     
     public Document extract() throws IOException, MissingSplitter {
+        this.documentSections = new ArrayList<>();
+        this.extrasStorage = new DocExtrasStorage(extrasCsvFile);
+        if (extrasCsvFile.exists()) {
+            try {
+                extrasStorage.load();
+            } catch (FileNotFoundException ex) {
+                Logger.getLogger(DocumentExtractor.class.getName()).log(
+                        Level.WARNING, "Error while loading extras", ex);
+            } catch (MalformedDataFileException ex) {
+                Logger.getLogger(DocumentExtractor.class.getName()).log(
+                        Level.WARNING, "Error while loading extras", ex);
+            }
+        }
+        
         PdfText pdfText = new PdfText(pdfFile);
         pdfText.initExtraction();
         int pageCount = pdfText.getNumberOfPages();

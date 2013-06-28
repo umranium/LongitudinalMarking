@@ -204,7 +204,7 @@ public class SingleSectionMarker extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 DocumentSection documentSection = new DocumentSection(
-                        "id", null,
+                        "id", null, null,
                         Collections.EMPTY_LIST, 1.0);
                 SingleSectionMarker marker = new SingleSectionMarker(
                         documentSection,

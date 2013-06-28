@@ -13,6 +13,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 
 /**
@@ -79,16 +81,17 @@ public class DocumentSection {
     private File[] tempImgFiles;
     private ImageCache<BufferedImage> imgs;
 
-    private String comments = "No comments";
-    private double mark = 1.0;
+    private DocExtrasStorage extrasStorage;
+    private SectionAnnotation annotation = new SectionAnnotation();
     
     
-    public DocumentSection(String id, PdfText pdfText, List<BufferedImage> imgs, double imgScale) {
+    public DocumentSection(String id, PdfText pdfText, DocExtrasStorage extrasStorage, List<BufferedImage> imgs, double imgScale) {
         imgs = removeWhitespace(imgs);
         
         this.document = null;
         this.id = id;
 //        this.pdfText = pdfText;
+        this.extrasStorage = extrasStorage;
         this.imageCount = imgs.size();
         this.imgScale = imgScale;
         this.origImgSizes = new Dimension[imageCount];
@@ -111,6 +114,14 @@ public class DocumentSection {
         }
         
         this.imgs = new TempFileLoadingImageCache(imageCount);
+    
+        if (extrasStorage!=null) {
+            if (extrasStorage.hasSection(id)) {
+                SectionAnnotation ann = extrasStorage.get(id);
+                this.annotation.setMark(ann.getMark());
+                this.annotation.setComments(ann.getComments());
+            }
+        }
     }
 
     public Document getDocument() {
@@ -147,7 +158,7 @@ public class DocumentSection {
      * @return the value of comments
      */
     public String getComments() {
-        return comments;
+        return annotation.getComments();
     }
 
     /**
@@ -156,9 +167,10 @@ public class DocumentSection {
      * @param comments new value of comments
      */
     public void setComments(String comments) {
-        String oldComments = this.comments;
-        this.comments = comments;
+        String oldComments = this.annotation.getComments();
+        this.annotation.setComments(comments);
         propertyChangeSupport.firePropertyChange(PROP_COMMENTS, oldComments, comments);
+        saveExtras();
     }
 
     /**
@@ -167,7 +179,7 @@ public class DocumentSection {
      * @return the value of mark
      */
     public double getMark() {
-        return mark;
+        return this.annotation.getMark();
     }
 
     /**
@@ -176,9 +188,10 @@ public class DocumentSection {
      * @param mark new value of mark
      */
     public void setMark(double mark) {
-        double oldMark = this.mark;
-        this.mark = mark;
+        double oldMark = this.annotation.getMark();
+        this.annotation.setMark(mark);
         propertyChangeSupport.firePropertyChange(PROP_MARK, oldMark, mark);
+        saveExtras();
     }
 
 
@@ -206,6 +219,18 @@ public class DocumentSection {
 
     public void removePropertyChangeListener(String propertyName, PropertyChangeListener listener) {
         propertyChangeSupport.removePropertyChangeListener(propertyName, listener);
+    }
+    
+    private void saveExtras() {
+        if (extrasStorage!=null) {
+            extrasStorage.set(id, annotation);
+            try {
+                extrasStorage.save();
+            } catch (IOException ex) {
+                Logger.getLogger(DocumentSection.class.getName()).log(
+                        Level.WARNING, "Unable to save extras", ex);
+            }
+        }
     }
     
     private class TempFileLoadingImageCache extends ImageCache<BufferedImage> {
