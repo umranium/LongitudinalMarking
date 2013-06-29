@@ -66,7 +66,7 @@ public class DocExtrasStorage {
 
     public DocExtrasStorage(File csvFile) {
         this.file = csvFile;
-        secAnnotations = new HashMap<>();
+        secAnnotations = new HashMap<String,SectionAnnotation>();
     }
     
     synchronized 

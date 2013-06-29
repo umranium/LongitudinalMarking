@@ -504,7 +504,7 @@ public class MainFrame extends javax.swing.JFrame {
         Map<String, JCheckBox> sectionMap;
 
         public SectionVisibilityPanelManager() {
-            sectionMap = new TreeMap<>();
+            sectionMap = new TreeMap<String, JCheckBox>();
         }
         
         public void addSections(Set<String> sections) {

@@ -18,7 +18,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
@@ -61,9 +66,9 @@ public class DocumentExtractor {
             int startPage, double startY,
             int endPage, Double endY) {
         PrintStream out = System.out;
-        out.println("Extract section from [page=" + startPage + ", y=" + startY
+        out.println("Extract section '"+splitId+"' from [page=" + startPage + ", y=" + startY
                 + "] to [page=" + endPage + ", y=" + endY + "]");
-        List<BufferedImage> images = new ArrayList<>();
+        List<BufferedImage> images = new ArrayList<BufferedImage>();
         for (int pg = startPage; pg <= endPage; ++pg) {
             BufferedImage pageImg = pageImages[pg];
             int x1 = 0;
@@ -88,7 +93,7 @@ public class DocumentExtractor {
     }
     
     public Document extract() throws IOException, MissingSplitter {
-        this.documentSections = new ArrayList<>();
+        this.documentSections = new ArrayList<DocumentSection>();
         this.extrasStorage = new DocExtrasStorage(extrasCsvFile);
         if (extrasCsvFile.exists()) {
             try {
@@ -114,7 +119,7 @@ public class DocumentExtractor {
                         .replaceAll("\\..*", String.format("-%02d.png", i+1));
                 File imageFile = new File(pdfFile.getParentFile(), imageName);
                 
-                if (imageFile.exists()) {
+                if (imageFile.exists() && imageFile.lastModified()>pdfFile.lastModified()) {
                     pageImages[i] = ImageIO.read(imageFile);
                 } else {
                     PDPage page = pdfText.getPages().get(i);
@@ -131,6 +136,121 @@ public class DocumentExtractor {
             pdfText.finalizeExtraction();
         }
         
+        Map<TextLocation,Integer> splitterBestMatches = new TreeMap<TextLocation,Integer>(COMP_BY_LOC);
+        
+        for (int sp=0; sp<splitters.length; ++sp) {
+            Splitter splitter = splitters[sp];
+            
+            List<TextLocation> txtLocs = new ArrayList<TextLocation>();
+            for (int page=0; page<pageCount; ++page) {
+                double minX, maxX;
+                double minY, maxY;
+                
+                PageSizing pageSizing = pdfText.getPageSizing(page);
+                
+                if (splitter.minX!=null) {
+                    minX = pageSizing.toPdfXCoord(splitter.minX, splitter.templateWidth);
+                } else {
+                    minX = Double.NEGATIVE_INFINITY;
+                }
+
+                if (splitter.maxX!=null) {
+                    maxX = pageSizing.toPdfXCoord(splitter.maxX, splitter.templateWidth);
+                } else {
+                    maxX = Double.POSITIVE_INFINITY;
+                }
+                
+                minY = Double.NEGATIVE_INFINITY;
+                maxY = Double.POSITIVE_INFINITY;
+                
+                //System.out.println("finding all text on page "+page);
+                List<TextLocation> tmpLocs = pdfText.findAllText(
+                         page, minX, minY, maxX, maxY);
+                txtLocs.addAll(tmpLocs);
+                
+                for (TextLocation loc:tmpLocs) {
+                    loc.page = page;
+                }
+            }
+            
+            boolean bestMatchFound = false;
+            if (!txtLocs.isEmpty()) {
+                List<MatchedText> matches = pdfText.findTextIn(txtLocs, woWs(splitter.text));
+                if (!matches.isEmpty() && matches.get(0).matchWeight<1.0) {
+                    bestMatchFound = true;
+                    TextLocation bestMatch = matches.get(0).textLocation;
+                    
+                    
+                    /*
+                    System.out.println("Best match of '"+splitter.id+
+                            "' was found as '"+JsonCommon.quoteText(bestMatch.text)+
+                            "' on page "+bestMatch.page);
+                    */
+                    PageSizing pageSizing = pdfText.getPageSizing(bestMatch.page);
+                    if (splitter.height!=null) {
+                        bestMatch.y = bestMatch.y2 - 
+                                pageSizing.toPdfYCoord(splitter.height,
+                                splitter.templateHeight);
+                    }
+                    if (splitter.topPadding!=null) {
+                        double padding = pageSizing.toPdfYCoord(splitter.topPadding,
+                                splitter.templateHeight);
+                        bestMatch.y += padding;
+                        bestMatch.y2 += padding;
+                    }
+                
+                    splitterBestMatches.put(bestMatch, sp);
+                }
+            }
+            
+            if (!bestMatchFound) {
+                Logger.getLogger(DocumentExtractor.class.getName()).log(
+                        Level.WARNING,
+                        "Splitter {0} (''{1}'') could not be located in document.",
+                        new Object[]{splitter.id, splitter.text});                
+            }
+        }
+        
+        TextLocation lastMatch = null;
+        String lastSplitterId = null;
+        for (Map.Entry<TextLocation,Integer> entry:splitterBestMatches.entrySet()) {
+            Splitter currentSplitter = splitters[entry.getValue()];
+            TextLocation currentMatch = entry.getKey();
+            
+            int startPage = 0;
+            double startY = 0.0;
+            String splitterId = FIRST_SEGMENT_ID;
+            if (lastMatch!=null) {
+                startPage = lastMatch.page;
+                startY = lastMatch.y;
+                splitterId = lastSplitterId;
+            }
+            extractSection(pdfText, pageImages,
+                    scale, splitterId,
+                    startPage, startY,
+                    currentMatch.page, currentMatch.y);
+            lastMatch = currentMatch;
+            lastSplitterId = currentSplitter.id;
+        }
+        
+        {
+            int startPage = 0;
+            double startY = 0.0;
+            int lastPage = pageCount-1;
+            String splitterId = FIRST_SEGMENT_ID;
+            if (lastMatch!=null) {
+                startPage = lastMatch.page;
+                startY = lastMatch.y;
+                splitterId = lastSplitterId;
+            }
+            extractSection(pdfText, pageImages,
+                    scale, splitterId,
+                    startPage, startY,
+                    lastPage, null);
+        }
+        
+        
+        /*
         int currentSplitter = 0;
         TextLocation lastMatch = null;
         
@@ -239,8 +359,28 @@ public class DocumentExtractor {
                     startPage, startY,
                     lastPage, null);
         }
+        */
         
         return new Document(source, documentSections);
     }
     
+    
+    private Comparator<TextLocation> COMP_BY_LOC = new Comparator<TextLocation>() {
+        @Override
+        public int compare(TextLocation o1, TextLocation o2) {
+            int res = Integer.compare(o1.page, o2.page);
+            if (res!=0) {
+                return res;
+            }
+            res = Double.compare(o1.y2, o2.y2);
+            if (res!=0) {
+                return res;
+            }
+            res = Double.compare(o1.y, o2.y);
+            if (res!=0) {
+                return res;
+            }
+            return 0;
+        }
+    };
 }

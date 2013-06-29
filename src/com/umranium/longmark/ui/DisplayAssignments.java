@@ -23,24 +23,42 @@ import javax.swing.JOptionPane;
  */
 public class DisplayAssignments {
     
-    private static final File ROOT_FOLDER = new File("/Users/umran/ADFA-stuff/CPS/marking-ass2/Group1");
+    private static class AssignmentSplitter extends Splitter {
+
+        public AssignmentSplitter(String id, String text) {
+            super(id, text, 0.5, null, null, 2380.0, 16.0, 80.0, 3368.0);
+        }
+        
+    }
     
-    private static final Splitter[] SPLITTERS = new Splitter[] {
-        new Splitter("Q1:Answer","<<[TAG:Question1]>>", 0.5, null, null, 2380.0, 16.0, 80.0, 3368.0),
-        new Splitter("Q2:Answer","<<[TAG:Question2]>>", 0.5, null, null, 2380.0, 16.0, 80.0, 3368.0),
-        new Splitter("Q3:Answer","<<[TAG:Question3]>>", 0.5, null, null, 2380.0, 16.0, 80.0, 3368.0),
-        new Splitter("Q4:Answer","<<[TAG:Question4]>>", 0.5, null, null, 2380.0, 16.0, 80.0, 3368.0),
-        new Splitter("Q5:Answer","<<[TAG:Question5]>>", 0.5, null, null, 2380.0, 16.0, 80.0, 3368.0),
-        new Splitter("Q6:Answer","<<[TAG:Question6]>>", 0.5, null, null, 2380.0, 16.0, 80.0, 3368.0),
-        new Splitter("Q7:Answer","<<[TAG:Question7]>>", 0.5, null, null, 2380.0, 16.0, 80.0, 3368.0),
-        new Splitter("Q8:Answer","<<[TAG:Question8]>>", 0.5, null, null, 2380.0, 16.0, 80.0, 3368.0),
+    private static final AssignmentSplitter[] SPLITTERS = new AssignmentSplitter[] {
+        new AssignmentSplitter("Q1:Answer","<<[TAG:Question1]>>"),
+        new AssignmentSplitter("Q2:Answer","<<[TAG:Question2]>>"),
+        new AssignmentSplitter("Q3:Answer","<<[TAG:Question3]>>"),
+        new AssignmentSplitter("Q4:Answer","<<[TAG:Question4]>>"),
+        new AssignmentSplitter("Q5:Answer","<<[TAG:Question5]>>"),
+        new AssignmentSplitter("Q6:Answer","<<[TAG:Question6]>>"),
+        new AssignmentSplitter("Q7:Answer","<<[TAG:Question7]>>"),
+        new AssignmentSplitter("Q8:Answer","<<[TAG:Question8]>>"),
     };
     
     public static void main(String[] args) {
-
-        List<File> markingSheets = new ArrayList<>();
         
-        for (File dir:ROOT_FOLDER.listFiles()) {
+        if (args.length<1) {
+            System.out.println("\nParams: <path-to-assignment-root-folder>");
+            System.exit(-1);
+        }
+        
+        File rootFolder = new File(args[0]);
+        
+        if (!rootFolder.exists()) {
+            System.out.println("Root folder: "+rootFolder+" does NOT exist");
+            System.exit(-1);
+        }
+
+        List<File> markingSheets = new ArrayList<File>();
+        
+        for (File dir:rootFolder.listFiles()) {
             if (!dir.isDirectory()) {
                 continue;
             }
@@ -73,7 +91,7 @@ public class DisplayAssignments {
         
         System.out.println("Found "+markingSheets.size()+" PDF files.");
 
-        final List<Document> documents = new ArrayList<>();
+        final List<Document> documents = new ArrayList<Document>();
         
         for (int i=0; i<markingSheets.size(); ++i) {
             File pdf = markingSheets.get(i);

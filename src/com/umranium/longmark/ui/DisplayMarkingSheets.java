@@ -76,7 +76,7 @@ public class DisplayMarkingSheets {
     
     public static void main(String[] args) {
 
-        List<FileEntry> foundFiles = new ArrayList<>();
+        List<FileEntry> foundFiles = new ArrayList<FileEntry>();
         
         for (File rootDir:ROOT_FOLDERS) {
             for (File dir:rootDir.listFiles()) {
@@ -106,7 +106,7 @@ public class DisplayMarkingSheets {
         
         System.out.println("Found "+foundFiles.size()+" PDF files.");
 
-        final List<Document> documents = new ArrayList<>();
+        final List<Document> documents = new ArrayList<Document>();
         
         for (int i=0; i<foundFiles.size(); ++i) {
             FileEntry fileEntry = foundFiles.get(i);

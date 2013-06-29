@@ -26,7 +26,7 @@ public abstract class ImageCache<ImageType extends Image> {
 
     public ImageCache(int imageCount) {
         this.imageCount = imageCount;
-        this.cachedImages = new AtomicReferenceArray<>(imageCount);
+        this.cachedImages = new AtomicReferenceArray<SoftReference<ImageType>>(imageCount);
         this.mutexs = new Object[imageCount];
         
         for (int i=0; i<imageCount; ++i) {
@@ -68,7 +68,7 @@ public abstract class ImageCache<ImageType extends Image> {
             
             //  load image, and store in the cache
             img = loadImage(index);
-            cachedImages.set(index, new SoftReference<>(img));
+            cachedImages.set(index, new SoftReference<ImageType>(img));
             return img;
         }
     }
@@ -85,7 +85,7 @@ public abstract class ImageCache<ImageType extends Image> {
     }
     
     public Map<Integer,Image> getImages(boolean load) {
-        Map<Integer,Image> map = new HashMap<>(imageCount);
+        Map<Integer,Image> map = new HashMap<Integer,Image>(imageCount);
         for (int i=0; i<imageCount; ++i) {
             ImageType img;
             if (load) {

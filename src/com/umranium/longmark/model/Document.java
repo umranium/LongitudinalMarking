@@ -24,7 +24,7 @@ public class Document {
     public Document(String source, List<DocumentSection> documentSections) {
         this.source = source;
         this.documentSections = documentSections;
-        this.documentSectionMap = new TreeMap<>();
+        this.documentSectionMap = new TreeMap<String,DocumentSection>();
         
         initSectionMap();
     }
@@ -39,7 +39,7 @@ public class Document {
     }
     
     public static Document merge(String source, Document... docs) {
-        List<DocumentSection> sections = new ArrayList<>();
+        List<DocumentSection> sections = new ArrayList<DocumentSection>();
         for (Document doc:docs) {
             sections.addAll(doc.getSections());
         }

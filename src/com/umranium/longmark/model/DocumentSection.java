@@ -31,42 +31,69 @@ public class DocumentSection {
 
     private transient final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
     
-    private static List<BufferedImage> removeWhitespace(List<BufferedImage> imgs) {
-        List<BufferedImage> newImgs = new ArrayList<>(imgs.size());
-        for (BufferedImage img:imgs) {
-            int height = img.getHeight();
-            int width = img.getWidth();
-            int lastRow = height-1;
-            while (lastRow>=0) {
-                boolean differenceFound = false;
-                int firstPixel = img.getRGB(0, lastRow);
+    private static int findDiffRow(BufferedImage img, int start, int min, int max, int step) {
+        int width = img.getWidth();
+        int lastValidValue = -1;
+        int prevFirstPixel = -1;
+        while (start>=min && start<=max) {
+            lastValidValue = start;
+            boolean differenceFound = false;
+            int firstPixel = img.getRGB(0, start);
+            if (prevFirstPixel>0 && firstPixel!=prevFirstPixel) {
+                differenceFound = true;
+            } else {
+                prevFirstPixel = firstPixel;
+            }
+            
+            if (!differenceFound) {
                 for (int i=1; i<width; ++i) {
-                    int pix = img.getRGB(i, lastRow);
+                    int pix = img.getRGB(i, start);
                     if (pix!=firstPixel) {
                         differenceFound = true;
                         break;
                     }
                 }
-                if (!differenceFound) {
-                    --lastRow;
-                } else {
-                    break;
-                }
             }
             
-            if (lastRow<0) {
+            if (!differenceFound) {
+                start += step;
+            } else {
+                break;
+            }
+        }
+        return start;
+    }
+    
+    private static List<BufferedImage> removeWhitespace(List<BufferedImage> imgs) {
+        List<BufferedImage> newImgs = new ArrayList<BufferedImage>(imgs.size());
+        for (BufferedImage img:imgs) {
+            int height = img.getHeight();
+            int firstRow = findDiffRow(img, 0, 0, height-1, 1);
+            if (firstRow<0 || firstRow>=height) {
                 continue;
             }
             
-            //  leave some whitespace at the end.
-            int newHeight = lastRow + 1 + FOOTER_WHITESPACE_HEIGHT;
+            firstRow = firstRow-FOOTER_WHITESPACE_HEIGHT+1;
+            if (firstRow<0) {
+                firstRow = 0;
+            }
             
-            if (newHeight>height) {
+            int lastRow = findDiffRow(img, height-1, 0, height-1, -1);
+            if (lastRow<0 || lastRow>=height) {
+                continue;
+            }
+            
+            lastRow = lastRow+FOOTER_WHITESPACE_HEIGHT-1;
+            if (lastRow>height-1) {
+                lastRow = height-1;
+            }
+            
+            if (firstRow==0 && lastRow==height-1) {
                 newImgs.add(img);
                 continue;
             }
             
-            BufferedImage newImg = img.getSubimage(0, 0, width, lastRow+1);
+            BufferedImage newImg = img.getSubimage(0, firstRow, img.getWidth(), lastRow-firstRow+1);
             newImgs.add(newImg);
         }
         return newImgs;

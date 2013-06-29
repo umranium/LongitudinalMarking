@@ -7,6 +7,8 @@ package com.umranium.longmark.ui.pdftext;
 import com.umranium.longmark.common.ExtendedTreeMap;
 import com.umranium.longmark.common.Log;
 import com.umranium.longmark.common.MappedInstanceCreator;
+import com.umranium.longmark.json.JsonCommon;
+import java.awt.geom.AffineTransform;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,7 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import org.apache.pdfbox.pdmodel.common.PDMatrix;
 import org.apache.pdfbox.pdmodel.graphics.PDGraphicsState;
+import org.apache.pdfbox.util.Matrix;
 import org.apache.pdfbox.util.TextPosition;
 
 /**
@@ -52,6 +56,15 @@ public class TextLocationMap {
         @Override
         public int compare(TextLocation o1, TextLocation o2) {
             return Double.compare(o1.x, o2.x);
+        }
+    };
+    
+    private static final Comparator<List<TextLocation>> Y_ACC_LOCATION_COMPARE = new Comparator<List<TextLocation>>() {
+        @Override
+        public int compare(List<TextLocation> list1, List<TextLocation> list2) {
+            TextLocation o1 = list1.get(0);
+            TextLocation o2 = list2.get(0);
+            return Double.compare(o1.y2, o2.y2);
         }
     };
     
@@ -120,17 +133,25 @@ public class TextLocationMap {
     public void place(PDGraphicsState graphicsState, TextPosition text) {
         //PrintWriter out = Log.out();
         
-        double x = text.getX();
-        double y = text.getY();
-        double cx = text.getWidth();
-        double cy = text.getHeight();
-
+        double x = text.getXDirAdj();
+        double y = text.getYDirAdj();
+        double cx = text.getWidthDirAdj();
+        double cy = text.getYScale();
+        
         String characters = text.getCharacter();
         
         double spaceWidth = text.getWidthOfSpace();
         if (spaceWidth==0.0) {
             spaceWidth = cx;
         }
+        
+//        System.out.println(String.format("%10s - %3.2f, %3.2f, %3.2f, %3.2f - %3.2f, %3.2f - %3.2f, %3.2f - %3.2f - %3.2f",
+//                JsonCommon.quoteText(characters),
+//                x, y, cx, cy,
+//                text.getXScale(), text.getYScale(),
+//                text.getWidthOfSpace(),
+//                text.getFontSizeInPt()
+//                ));
         
         //out.println(characters + " " + ((int) characters.charAt(0)) + " (" + x + "," + (y - cy) + "," + (x + cx) + "," + y + ") space-width="+spaceWidth);
         this.place(x, y - cy, x + cx, y, cx, cy, spaceWidth, characters, text.isDiacritic());
@@ -207,10 +228,10 @@ public class TextLocationMap {
         double tMaxX = Math.max(minX, maxX);
         double tMaxY = Math.max(minY, maxY);
 
-        //out.println("tMinX = " + tMinX);
-        //out.println("tMinY = " + tMinY);
-        //out.println("tMaxX = " + tMaxX);
-        //out.println("tMaxY = " + tMaxY);
+//        out.println("tMinX = " + tMinX);
+//        out.println("tMinY = " + tMinY);
+//        out.println("tMaxX = " + tMaxX);
+//        out.println("tMaxY = " + tMaxY);
 
         List<TextLocation> foundLocs = new ArrayList<TextLocation>();
 
@@ -219,7 +240,7 @@ public class TextLocationMap {
             Double y = yVals.get(iY);
             for (Set<TextLocation> lineCharLocs : charLocs.get(y).values()) {
                 for (TextLocation charLoc : lineCharLocs) {
-                    //out.println(charLoc.text + "\t" + charLoc.x + "\t" + charLoc.y + "\t" + charLoc.x2 + "\t" + charLoc.y2);
+//                    out.println(charLoc.text + "\t" + charLoc.x + "\t" + charLoc.y + "\t" + charLoc.x2 + "\t" + charLoc.y2);
 
                     if ((!addPartials && charLoc.x >= tMinX && charLoc.x2 <= tMaxX && charLoc.y >= tMinY && charLoc.y2 <= tMaxY)
                             || (addPartials && charLoc.x <= tMaxX && charLoc.x2 >= tMinX
@@ -241,7 +262,7 @@ public class TextLocationMap {
 
         for (TextLocation tl : foundLocs) {
             List<TextLocation> foundLine = null;
-
+            
             for (List<TextLocation> testLine : lines) {
                 TextLocation lastItem = testLine.get(testLine.size() - 1);
                 boolean yOverlap = Range.isOverlapping(
@@ -258,18 +279,24 @@ public class TextLocationMap {
             if (foundLine == null) {
                 foundLine = new ArrayList<TextLocation>();
                 lines.add(foundLine);
+                //System.out.println(tl+" is new line");
+            } else {
+                //System.out.println(tl+" is nearest to line starting with "+foundLine.get(0));
             }
 
             foundLine.add(tl);
         }
+        
+        Collections.sort(lines, Y_ACC_LOCATION_COMPARE);
 
 //        out.println("Found Lines:");
 //        for (int i = 0; i < lines.size(); ++i) {
 //            List<TextLocation> line = lines.get(i);
 //            out.println("\tLine: " + (i + 1));
 //            for (TextLocation tl : line) {
-//                out.println("\t\t" + tl);
+//                out.print(tl.text);
 //            }
+//            out.println();
 //        }
 
         resetWords();
@@ -356,7 +383,7 @@ public class TextLocationMap {
             
 //            out.println("\tFound words:");
 //            for (TextLocation tl:currentLine) {
-//                out.println("\t\t'"+tl.text+"'");
+//                out.println("\t\t'"+ JsonCommon.quoteText(tl.text)+"'");
 //            }
             
             finishCurrentLine();

@@ -94,7 +94,7 @@ public class DocSecPanel extends javax.swing.JPanel {
         
         final String name = sourceName + 
                 ":" + documentSection.getId()+":"+callNo.incrementAndGet();
-        System.out.println("Painting "+name);
+        //System.out.println("Painting "+name);
         
         final int imgCount = documentSection.getImageCount();
         
@@ -108,7 +108,7 @@ public class DocSecPanel extends javax.swing.JPanel {
                 }
                 final int index = i;
                 //  otherwise, asynchronously load image
-                System.out.println("\treloading "+name+" image "+index);
+                //System.out.println("\treloading "+name+" image "+index);
                 //  increase the number of pending images
                 pendingAsyncLoadImageCount.incrementAndGet();
                 scaledDocumentSection.asyncLoadScaledImageAsync(
@@ -118,7 +118,7 @@ public class DocSecPanel extends javax.swing.JPanel {
                     @Override
                     public boolean stillValid() {
                         boolean valid = isValid();
-                        System.out.println("\tcheck "+name+" image "+index+" valid="+valid);
+                        //System.out.println("\tcheck "+name+" image "+index+" valid="+valid);
                         return valid;
                     }
                     
@@ -128,13 +128,13 @@ public class DocSecPanel extends javax.swing.JPanel {
 
                     @Override
                     public void onResults(Image result) {
-                        System.out.println("\tloaded "+name+" image "+index);
+                        //System.out.println("\tloaded "+name+" image "+index);
                         checkRePaint();
                     }
 
                     @Override
                     public void onCancelled() {
-                        System.out.println("\tcancelled load "+name+" image "+index);
+                        //System.out.println("\tcancelled load "+name+" image "+index);
                         checkRePaint();
                     }
 
@@ -152,7 +152,7 @@ public class DocSecPanel extends javax.swing.JPanel {
                             if (tmpCount==0) {
                                 //  check and request a repaint
                                 if (isValid()) {
-                                    System.out.println("\trepaint "+name);
+                                    //System.out.println("\trepaint "+name);
                                     java.awt.EventQueue.invokeLater(repaintRunnable);
                                 }
                             }
@@ -161,7 +161,7 @@ public class DocSecPanel extends javax.swing.JPanel {
                 });
             }
         } else {
-            System.out.println("\tdrawing "+name);
+            //System.out.println("\tdrawing "+name);
             synchronized (drawMutex) {
                 int width = getWidth();
                 Dimension[] scaledImgSizes = scaledDocumentSection.getScaledImgSizes();

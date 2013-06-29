@@ -76,7 +76,7 @@ public class DisplayAssignmentsAndMarkingSheets {
     
     public static void main(String[] args) {
 
-        List<AssignmentAndMarkSheet> foundFiles = new ArrayList<>();
+        List<AssignmentAndMarkSheet> foundFiles = new ArrayList<AssignmentAndMarkSheet>();
 
         for (File rootDir:ROOT_FOLDER) {
             for (File dir:rootDir.listFiles()) {
@@ -114,7 +114,7 @@ public class DisplayAssignmentsAndMarkingSheets {
         
         System.out.println("Found "+foundFiles.size()+" student entries.");
 
-        final List<Document> documents = new ArrayList<>();
+        final List<Document> documents = new ArrayList<Document>();
         
         for (int i=0; i<foundFiles.size(); ++i) {
             AssignmentAndMarkSheet aams = foundFiles.get(i);

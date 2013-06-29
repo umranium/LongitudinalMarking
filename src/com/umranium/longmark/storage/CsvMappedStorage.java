@@ -44,7 +44,8 @@ public class CsvMappedStorage<KeyType, RecordType> {
     
     public void load(File file, Map<KeyType,RecordType> outputMap, RecordGenerator<KeyType, RecordType> recGen) throws FileNotFoundException, MalformedDataFileException, IOException {
         outputMap.clear();
-        try (CSVReader reader = new CSVReader(new FileReader(file))) {
+        CSVReader reader = new CSVReader(new FileReader(file));
+        try {
             final int columnCount = columnDefinitions.length;
             
             String[] headers = reader.readNext();
@@ -84,11 +85,14 @@ public class CsvMappedStorage<KeyType, RecordType> {
                 outputMap.put(key, record);
             }
             
+        } finally {
+            reader.close();
         }
     }
     
     public void save(File file, Map<KeyType,RecordType> inputMap) throws IOException {
-        try (CSVWriter writer = new CSVWriter(new FileWriter(file))) {
+        CSVWriter writer = new CSVWriter(new FileWriter(file));
+        try {
             final int columnCount = columnDefinitions.length;
             String[] values = new String[columnCount];
             
@@ -116,6 +120,8 @@ public class CsvMappedStorage<KeyType, RecordType> {
                 
                 writer.writeNext(values);
             }
+        } finally {
+            writer.close();
         }
     }
     

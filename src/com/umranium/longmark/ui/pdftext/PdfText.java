@@ -6,21 +6,30 @@ package com.umranium.longmark.ui.pdftext;
 
 import com.umranium.longmark.common.Constants;
 import com.umranium.longmark.common.Log;
+import com.umranium.longmark.json.JsonCommon;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Vector;
 import org.apache.pdfbox.exceptions.CryptographyException;
 import org.apache.pdfbox.exceptions.InvalidPasswordException;
+import org.apache.pdfbox.pdfviewer.PageDrawer;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.COSObjectable;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.common.PDStream;
+import org.apache.pdfbox.pdmodel.graphics.PDGraphicsState;
 import org.apache.pdfbox.util.PDFTextStripper;
 import org.apache.pdfbox.util.TextPosition;
 
@@ -130,29 +139,75 @@ public class PdfText {
         PDStream contents = page.getContents();
         final TextLocationMap locationMap = new TextLocationMap(false, false, true);
         if (contents != null) {
-            PDFTextStripper textStripper = new PDFTextStripper() {
-                @Override
-                protected void processTextPosition(TextPosition text) {
-                    locationMap.place(this.getGraphicsState(), text);
-                }
+            MyPdfTextStripper textStripper = new MyPdfTextStripper() {
             };
             textStripper.setSortByPosition(true);
-            try {
-                textStripper.processStream(page, page.findResources(), page.getContents().getStream());
-            } catch (NullPointerException e) {
-                e.printStackTrace(out);
+            textStripper.processPages(Arrays.asList((COSObjectable)page));
+            for (List<TextPosition> poss:textStripper.getCharactersByArticle()) {
+                for (TextPosition pos:poss) {
+                    locationMap.place(textStripper.getGraphicsState(), pos);
+                }
             }
         }
         //out.println(page.getMediaBox());
 
         pageTextLocMaps.put(pageIndex, locationMap);
 
-
         pageSizingMap.put(pageIndex,
                 new PageSizing(
                 pageIndex,
                 pdfX1, pdfY1, pdfCX, pdfCY
                 ));
+    }
+    
+    private static final Writer EMPTY_WRITER = new Writer() {
+        @Override
+        public void write(char[] cbuf, int off, int len) throws IOException {
+        }
+
+        @Override
+        public void flush() throws IOException {
+        }
+
+        @Override
+        public void close() throws IOException {
+        }
+    };
+    
+    private class MyPdfTextStripper extends PDFTextStripper {
+        
+
+        public MyPdfTextStripper() throws IOException {
+        }
+
+        public MyPdfTextStripper(Properties props) throws IOException {
+            super(props);
+        }
+
+        public MyPdfTextStripper(String encoding) throws IOException {
+            super(encoding);
+        }
+
+        @Override
+        public void processPages(List<COSObjectable> pages) throws IOException {
+            this.output = EMPTY_WRITER;
+            super.processPages(pages);
+        }
+
+        @Override
+        protected void writePage() throws IOException {
+        }
+
+        @Override
+        public Vector<List<TextPosition>> getCharactersByArticle() {
+            return super.getCharactersByArticle();
+        }
+
+        @Override
+        public PDGraphicsState getGraphicsState() {
+            return super.getGraphicsState();
+        }
+        
     }
     
     public static class MatchedText {
@@ -195,7 +250,7 @@ public class PdfText {
     
     public List<MatchedText> findTextIn(List<TextLocation> wordLocs, String text) {
         char[] textChars = text.toCharArray();
-        List<MatchedText> matchedText = new ArrayList<>(wordLocs.size());
+        List<MatchedText> matchedText = new ArrayList<MatchedText>(wordLocs.size());
         for (TextLocation tl:wordLocs) {
             String foundText = tl.text;
             

@@ -63,19 +63,19 @@ public class DocSecGridPanel extends javax.swing.JPanel {
         
         initComponents();
         
-        documentColumns = new TreeMap<>(new Comparator<Document>(){
+        documentColumns = new TreeMap<Document,Integer>(new Comparator<Document>(){
             @Override
             public int compare(Document o1, Document o2) {
                 return o1.getSource().compareTo(o2.getSource());
             }
         });
-        sectionRows = new TreeMap<>(new Comparator<String>(){
+        sectionRows = new TreeMap<String,Integer>(new Comparator<String>(){
             @Override
             public int compare(String o1, String o2) {
                 return o1.compareTo(o2);
             }
         });
-        documentSectionPanelGrid = new ArrayList<>();
+        documentSectionPanelGrid = new ArrayList<List<GridSection>>();
     }
 
     public double getScale() {
@@ -109,7 +109,7 @@ public class DocSecGridPanel extends javax.swing.JPanel {
     
     public void addDocument(Document document) {
         List<DocumentSection> sections = document.getSections();
-        List<GridSection> docSectionsColumn = new ArrayList<>();
+        List<GridSection> docSectionsColumn = new ArrayList<GridSection>();
         
         int column = documentColumns.size();
         

@@ -37,7 +37,7 @@ public class MultiColumnText extends javax.swing.JPanel {
     
     private int columns, rows;
     private String text = "";
-    private List<MyTextArea> textAreas = new ArrayList<>();
+    private List<MyTextArea> textAreas = new ArrayList<MyTextArea>();
 
     public MultiColumnText() {
         this(40, 10);

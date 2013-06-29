@@ -16,7 +16,7 @@ public class SectionVisibilityManager {
     private Map<String,Boolean> sectionVibility;
 
     public SectionVisibilityManager() {
-        sectionVibility = new TreeMap<>();
+        sectionVibility = new TreeMap<String,Boolean>();
     }
     
     public boolean hasSection(String section) {

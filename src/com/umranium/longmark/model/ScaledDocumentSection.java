@@ -30,7 +30,7 @@ public class ScaledDocumentSection {
     public static final int FOOTER_WHITESPACE_HEIGHT = 20;
     
     private static List<BufferedImage> removeWhitespace(List<BufferedImage> imgs) {
-        List<BufferedImage> newImgs = new ArrayList<>(imgs.size());
+        List<BufferedImage> newImgs = new ArrayList<BufferedImage>(imgs.size());
         for (BufferedImage img:imgs) {
             int height = img.getHeight();
             int width = img.getWidth();
