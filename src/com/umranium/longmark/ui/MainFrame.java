@@ -9,6 +9,10 @@ import com.umranium.longmark.ui.doc.DocSecGridPanel;
 import com.umranium.longmark.common.BackgroundProcessor;
 import com.umranium.longmark.model.Document;
 import com.umranium.longmark.common.Constants;
+import com.umranium.longmark.common.FileExtFilter;
+import com.umranium.longmark.model.DocExtrasStorage;
+import com.umranium.longmark.model.DocumentSection;
+import com.umranium.longmark.model.Splitter;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GraphicsDevice;
@@ -18,21 +22,35 @@ import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.AdjustmentEvent;
-import java.awt.event.AdjustmentListener;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JViewport;
 import javax.swing.KeyStroke;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
  *
@@ -41,7 +59,14 @@ import javax.swing.KeyStroke;
 public class MainFrame extends javax.swing.JFrame {
     
     private static final String ACT_KEY_TOGGLE_TOOL_PANEL_VIS = "Toggle Tool Panel Vis";
+    private static final String ACT_KEY_GENERATE_MARKSHEETS = "Generate Marksheets";
+    private static final String ACT_KEY_LOAD_MARKS = "Load Marks";
     
+    private Map<String,String> studentIds;
+    
+    /**
+     * Hides or shows the tool panel.
+     */
     private final Action ACTION_TOGGLE_TOOL_PANEL_VISIBILITY = 
             new AbstractAction(ACT_KEY_TOGGLE_TOOL_PANEL_VIS) {
         {
@@ -94,6 +119,87 @@ public class MainFrame extends javax.swing.JFrame {
             
             updateUiState();
         }
+    };
+    
+    /**
+     * Generates mark-sheets from comments and marks.
+     */
+    private final Action ACTION_GENERATE_MARKSHEETS =
+            new AbstractAction(ACT_KEY_GENERATE_MARKSHEETS) {
+        {
+            this.putValue(Action.NAME, "Gen. Marksheets");
+            this.putValue(Action.SHORT_DESCRIPTION, "Generate Marksheets.");
+            this.putValue(Action.LONG_DESCRIPTION, "Generate Marksheets.");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("Performed Action: "+this.getValue(Action.NAME));
+            
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Select marksheet template");
+            fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            fileChooser.setMultiSelectionEnabled(false);
+            fileChooser.addChoosableFileFilter(new FileExtFilter("doc", "Microsoft Word '97(-2007) Document"));
+//            fileChooser.addChoosableFileFilter(new FileExtFilter("docx", "Microsoft Word 2007 Document"));
+            
+            int res = fileChooser.showOpenDialog(MainFrame.this);
+            if (res==JFileChooser.APPROVE_OPTION) {
+                File template = fileChooser.getSelectedFile();
+                Set<Document> docs = docSectionGrid.getDocuments();
+                for (Document doc:docs) {
+                    for (DocExtrasStorage extrasStorage:doc.getExtrasStorage()) {
+                        try {
+                            extrasStorage.generateMarkSheet(template, studentIds);
+                        } catch (FileNotFoundException ex) {
+                            Logger.getLogger(MainFrame.class.getName()).log(
+                                    Level.SEVERE, "Error while generating marksheet", ex);
+                        } catch (IOException ex) {
+                            Logger.getLogger(MainFrame.class.getName()).log(
+                                    Level.SEVERE, "Error while generating marksheet", ex);
+                        }
+                    }
+                }
+            }
+        }
+    };
+    
+    /**
+     * Loads marks from an excel file.
+     */
+    private final Action ACTION_LOAD_MARKS =
+            new AbstractAction(ACT_KEY_LOAD_MARKS) {
+        {
+            this.putValue(Action.NAME, "Load Marks");
+            this.putValue(Action.SHORT_DESCRIPTION, "Load marks from excel worksheet.");
+            this.putValue(Action.LONG_DESCRIPTION, "Load marks from excel worksheet.");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("Performed Action: "+this.getValue(Action.NAME));
+            
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Select worksheet with marks.");
+            fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            fileChooser.setMultiSelectionEnabled(false);
+//            fileChooser.addChoosableFileFilter(new FileExtFilter("xls", "Microsoft Excel '97(-2007) Worksheet"));
+            fileChooser.addChoosableFileFilter(new FileExtFilter("xlsx", "Microsoft Excel 2007 Worksheet"));
+            
+            int res = fileChooser.showOpenDialog(MainFrame.this);
+            if (res==JFileChooser.APPROVE_OPTION) {
+                File worksheet = fileChooser.getSelectedFile();
+                try {
+                    XSSFWorkbook workbook = new XSSFWorkbook(
+                            new BufferedInputStream(new FileInputStream(worksheet)));
+                    studentIds = loadStudentIds(workbook);
+                } catch (IOException ex) {
+                    Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE,
+                            "Error processing marks worksheet", ex);
+                }
+            }
+        }
+        
     };
     
     private class ScrollAction extends AbstractAction {
@@ -164,6 +270,21 @@ public class MainFrame extends javax.swing.JFrame {
         setScale(1.25);
         
         initShortcuts();
+        
+        addSections(Collections.singletonList(Constants.FIRST_SEGMENT_ID));
+    }
+    
+    public void addSections(Splitter[] splitters) {
+        List<String> ids = new ArrayList<String>(splitters.length);
+        for (Splitter splitter:splitters) {
+            ids.add(splitter.id);
+        }
+        addSections(ids);
+    }
+    
+    public void addSections(List<String> sectionIds) {
+        sectionVisibilityPanelManager.addSections(sectionIds);
+        docSectionGrid.addSections(sectionIds);
     }
     
     private void initShortcuts() {
@@ -173,6 +294,20 @@ public class MainFrame extends javax.swing.JFrame {
         getRootPane().getActionMap().put(
                 ACT_KEY_TOGGLE_TOOL_PANEL_VIS,
                 ACTION_TOGGLE_TOOL_PANEL_VISIBILITY);
+        
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_M, InputEvent.CTRL_DOWN_MASK),
+                ACT_KEY_GENERATE_MARKSHEETS);
+        getRootPane().getActionMap().put(
+                ACT_KEY_GENERATE_MARKSHEETS,
+                ACTION_GENERATE_MARKSHEETS);
+        
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK),
+                ACT_KEY_LOAD_MARKS);
+        getRootPane().getActionMap().put(
+                ACT_KEY_LOAD_MARKS,
+                ACTION_LOAD_MARKS);
         
         String[] dirStr = {"Left", "Right", "Up", "Down"};
         int[][] dirSign = {{-1,0},{1,0},{0,-1},{0,1}};
@@ -227,6 +362,8 @@ public class MainFrame extends javax.swing.JFrame {
 
         toolBarPanel = new javax.swing.JPanel();
         showToolPanelBtn = new javax.swing.JToggleButton();
+        jButton1 = new javax.swing.JButton();
+        jButton2 = new javax.swing.JButton();
         layeredPane = new javax.swing.JLayeredPane();
         containerScrollPane = new javax.swing.JScrollPane();
         javax.swing.JPanel containerPanel = docSectionGrid;
@@ -246,6 +383,12 @@ public class MainFrame extends javax.swing.JFrame {
         showToolPanelBtn.setAction(ACTION_TOGGLE_TOOL_PANEL_VISIBILITY);
         showToolPanelBtn.setSelected(true);
         toolBarPanel.add(showToolPanelBtn);
+
+        jButton1.setAction(ACTION_GENERATE_MARKSHEETS);
+        toolBarPanel.add(jButton1);
+
+        jButton2.setAction(ACTION_LOAD_MARKS);
+        toolBarPanel.add(jButton2);
 
         getContentPane().add(toolBarPanel, java.awt.BorderLayout.NORTH);
 
@@ -416,14 +559,112 @@ public class MainFrame extends javax.swing.JFrame {
 
     
     private void updateSectionVisibility() {
-        
         if (docSectionGrid.updateSectionVisibility(chkDisplayAll.isSelected(),
                 chkDisplayMarking.isSelected())) {
+            docSectionHeader.revalidate();
             containerScrollPane.revalidate();
         }
-            
     }
     
+    private static Map<String,String> loadStudentIds(XSSFWorkbook workbook) {
+        //  TODO: Generelize this code. This code is too particular to
+        //          the current worksheet.
+
+        Map<String,String> studentIds = new TreeMap<String, String>();
+        XSSFSheet sheet = workbook.getSheetAt(0);
+        for (int i=0; i<78; ++i) {
+            int rowIndex = 2+i;
+            XSSFRow row = sheet.getRow(rowIndex);
+
+            if (row==null) {
+                System.out.println("row "+rowIndex+" is NULL");
+                continue;
+            }
+
+            String id = row.getCell(1).getStringCellValue();
+            String name = row.getCell(2).getStringCellValue();
+
+            System.out.println(">> "+name+":"+id);
+
+            studentIds.put(name, id);
+        }
+
+        return studentIds;
+    }
+
+    private void loadMarks(XSSFWorkbook workbook) {
+        //  TODO: Generelize this code. This code is too particular to
+        //          the current worksheet.
+        XSSFSheet sheet = workbook.getSheetAt(0);
+        for (int i=0; i<17; ++i) {
+            XSSFRow row = sheet.getRow(3+i);
+
+            String name = row.getCell(0).getStringCellValue();
+            double q1Mark = row.getCell(4).getNumericCellValue();
+            double q2Mark = row.getCell(7).getNumericCellValue();
+            double q3Mark = row.getCell(11).getNumericCellValue();
+            double q4Mark = row.getCell(15).getNumericCellValue();
+            double q5Mark = row.getCell(18).getNumericCellValue();
+            double q6Mark = row.getCell(21).getNumericCellValue();
+            double q7Mark = row.getCell(27).getNumericCellValue();
+            double q8Mark = row.getCell(40).getNumericCellValue();
+
+            Set<Document> docs = docSectionGrid.getDocuments();
+            for (Document doc:docs) {
+                String source = doc.getSource();
+                source = source.substring(source.indexOf('-')+1);
+                if (!source.startsWith(name)) {
+                    continue;
+                }
+                System.out.println(">> found: "+source+" ("+name+")");
+
+                for (String section:doc.getSectionIds()) {
+                    DocumentSection documentSection = doc.getSection(section);
+                    if (section.startsWith("Q1:")) {
+                        documentSection.setMark(q1Mark);
+                        System.out.println(">> set: "+section+"="+documentSection.getMark());
+                        continue;
+                    }
+                    if (section.startsWith("Q2:")) {
+                        documentSection.setMark(q2Mark);
+                        System.out.println(">> set: "+section+"="+documentSection.getMark());
+                        continue;
+                    }
+                    if (section.startsWith("Q3:")) {
+                        documentSection.setMark(q3Mark);
+                        System.out.println(">> set: "+section+"="+documentSection.getMark());
+                        continue;
+                    }
+                    if (section.startsWith("Q4:")) {
+                        documentSection.setMark(q4Mark);
+                        System.out.println(">> set: "+section+"="+documentSection.getMark());
+                        continue;
+                    }
+                    if (section.startsWith("Q5:")) {
+                        documentSection.setMark(q5Mark);
+                        System.out.println(">> set: "+section+"="+documentSection.getMark());
+                        continue;
+                    }
+                    if (section.startsWith("Q6:")) {
+                        documentSection.setMark(q6Mark);
+                        System.out.println(">> set: "+section+"="+documentSection.getMark());
+                        continue;
+                    }
+                    if (section.startsWith("Q7:")) {
+                        documentSection.setMark(q7Mark);
+                        System.out.println(">> set: "+section+"="+documentSection.getMark());
+                        continue;
+                    }
+                    if (section.startsWith("Q8:")) {
+                        documentSection.setMark(q8Mark);
+                        System.out.println(">> set: "+section+"="+documentSection.getMark());
+                        continue;
+                    }
+                }
+            }
+        }
+
+    }
     
     public static boolean enableFullScreenMode(Window window) {
         String className = "com.apple.eawt.FullScreenUtilities";
@@ -473,14 +714,25 @@ public class MainFrame extends javax.swing.JFrame {
 //        }
         //</editor-fold>
         
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                MainFrame mainFrame = new MainFrame();
-                mainFrame.setVisible(true);
-            }
-        });
+        File worksheet = new File("/Users/umran/ADFA-stuff/CPS/marking-ass4/classMarks2013.xlsx");
+        try {
+            XSSFWorkbook workbook = new XSSFWorkbook(
+                    new BufferedInputStream(new FileInputStream(worksheet)));
+            loadStudentIds(workbook);
+        } catch (IOException ex) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE,
+                    "Error processing marks worksheet", ex);
+        }
+        
+        
+//        /* Create and display the form */
+//        java.awt.EventQueue.invokeLater(new Runnable() {
+//            @Override
+//            public void run() {
+//                MainFrame mainFrame = new MainFrame();
+//                mainFrame.setVisible(true);
+//            }
+//        });
         
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -488,6 +740,8 @@ public class MainFrame extends javax.swing.JFrame {
     private javax.swing.JCheckBox chkDisplayAll;
     private javax.swing.JCheckBox chkDisplayMarking;
     private javax.swing.JScrollPane containerScrollPane;
+    private javax.swing.JButton jButton1;
+    private javax.swing.JButton jButton2;
     private javax.swing.JLayeredPane layeredPane;
     private javax.swing.JLabel lblCurrentScale;
     private javax.swing.JPanel sectionVisibilityPanel;
@@ -507,7 +761,7 @@ public class MainFrame extends javax.swing.JFrame {
             sectionMap = new TreeMap<String, JCheckBox>();
         }
         
-        public void addSections(Set<String> sections) {
+        public void addSections(Collection<String> sections) {
             for (final String section:sections) {
                 if (!this.sectionMap.containsKey(section)) {
                     final JCheckBox chkBox = new JCheckBox(section);

@@ -36,21 +36,24 @@ public class DocTitle extends javax.swing.JPanel {
     @Override
     public Dimension getPreferredSize() {
         Dimension dim = super.getPreferredSize();
-        int maxWidth = 0;
+        int width = 0;
         
         GridBagLayout gridBagLayout = (GridBagLayout)gridPanel.getLayout();
         int column = gridPanel.getDocumentColumn(document);
         
         int[][] dims = gridBagLayout.getLayoutDimensions();
-        if (column<dims[0].length) {
-            maxWidth = dims[0][column];
+        int[] widths = dims[0];
+        int[] heights = dims[1];
+        if (column<widths.length) {
+            width = widths[column];
+            System.out.println("doc.title: col="+column+" doc='"+document.getSource()+"' width="+width);
         }
         
         if (column==0 || column==gridPanel.getColumnCount()-1) {
-            maxWidth -= 3; // for the header's border
+            width -= 3; // for the header's border
         }
         
-        return new Dimension(maxWidth, dim.height);
+        return new Dimension(width, dim.height);
     }
     
     /**

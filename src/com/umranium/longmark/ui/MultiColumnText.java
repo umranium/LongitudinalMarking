@@ -186,6 +186,8 @@ public class MultiColumnText extends javax.swing.JPanel {
             MyTextArea textArea = textAreas.remove(textAreas.size()-1);
             containerPanel.remove(textArea);
         }
+        
+        this.revalidate();
     }
     
     private void setTextAreaText(MyTextArea textArea, int start, int len) {

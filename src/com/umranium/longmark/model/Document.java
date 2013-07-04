@@ -18,11 +18,14 @@ import java.util.TreeMap;
 public class Document {
     
     private String source;
+    private List<DocExtrasStorage> extrasStorage;
     private List<DocumentSection> documentSections;
     private Map<String,DocumentSection> documentSectionMap;
 
-    public Document(String source, List<DocumentSection> documentSections) {
+    public Document(String source, List<DocExtrasStorage> extrasStorage,
+            List<DocumentSection> documentSections) {
         this.source = source;
+        this.extrasStorage = extrasStorage;
         this.documentSections = documentSections;
         this.documentSectionMap = new TreeMap<String,DocumentSection>();
         
@@ -40,10 +43,12 @@ public class Document {
     
     public static Document merge(String source, Document... docs) {
         List<DocumentSection> sections = new ArrayList<DocumentSection>();
+        List<DocExtrasStorage> extraStorage = new ArrayList<DocExtrasStorage>();
         for (Document doc:docs) {
             sections.addAll(doc.getSections());
+            extraStorage.addAll(doc.getExtrasStorage());
         }
-        return new Document(source, sections);
+        return new Document(source, extraStorage, sections);
     }
     
     public String getSource() {
@@ -52,6 +57,10 @@ public class Document {
 
     public List<DocumentSection> getSections() {
         return documentSections;
+    }
+
+    public List<DocExtrasStorage> getExtrasStorage() {
+        return extrasStorage;
     }
     
     public DocumentSection getSection(String splitId) {

@@ -146,6 +146,8 @@ public class DisplayMarkingSheets {
             @Override
             public void run() {
                 MainFrame mainFrame = new MainFrame();
+                mainFrame.addSections(SPLITTERS);
+                mainFrame.addSections(SPLITTERS_OLD);
                 mainFrame.setVisible(true);
                 mainFrame.addDocuments(documents);
             }

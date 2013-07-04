@@ -29,4 +29,6 @@ public class Constants {
     
     public static final int MAX_BG_THREAD_COUNT = 4; 
     
+    public static final String FIRST_SEGMENT_ID = "First Segment";
+    
 }

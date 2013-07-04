@@ -36,7 +36,6 @@ public class MarkingPanel extends javax.swing.JPanel {
     public MarkingPanel(DocumentSection docSection, int columns, int rows) {
         commentsTxt = new MultiColumnText(columns, rows);
         initComponents();
-        commentsTxt.setText("Hey\nKya bolti tu\nKya me bolu\n");
         
         
 //        docSection.addPropertyChangeListener(DocumentSection.PROP_COMMENTS,
@@ -103,6 +102,9 @@ public class MarkingPanel extends javax.swing.JPanel {
         editCommentsBtn = new javax.swing.JButton();
 
         setLayout(new java.awt.BorderLayout());
+
+        jPanel1.setMinimumSize(new java.awt.Dimension(200, 50));
+        jPanel1.setPreferredSize(new java.awt.Dimension(400, 50));
         add(jPanel1, java.awt.BorderLayout.CENTER);
 
         jPanel2.setBorder(javax.swing.BorderFactory.createEtchedBorder());

@@ -10,14 +10,31 @@ import com.umranium.longmark.storage.ColumnDefinition;
 import com.umranium.longmark.storage.CsvMappedStorage;
 import com.umranium.longmark.storage.MalformedDataFileException;
 import com.umranium.longmark.storage.RecordGenerator;
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.poi.hwpf.HWPFDocument;
+import org.apache.poi.hwpf.model.FieldsDocumentPart;
+import org.apache.poi.hwpf.usermodel.Bookmarks;
+import org.apache.poi.hwpf.usermodel.CharacterRun;
+import org.apache.poi.hwpf.usermodel.Field;
+import org.apache.poi.hwpf.usermodel.Fields;
+import org.apache.poi.hwpf.usermodel.Paragraph;
+import org.apache.poi.hwpf.usermodel.Range;
+import org.apache.poi.hwpf.usermodel.Section;
 
 /**
  *
@@ -90,6 +107,76 @@ public class DocExtrasStorage {
     
     public SectionAnnotation get(String sectionId) {
         return secAnnotations.get(sectionId);
+    }
+    
+    private static final Pattern TAG_PATTERN = Pattern.compile("\\{\\{.*\\}\\}");
+    
+    public void generateMarkSheet(File template, Map<String,String> studentIds) throws FileNotFoundException, IOException {
+        InputStream templateInput = new BufferedInputStream(
+                new FileInputStream(template),
+                (int)template.length());
+        
+        try {
+            HWPFDocument inputSheet = new HWPFDocument(
+                    templateInput
+                    );
+            
+            double totalMark = 0.0;
+            Map<String,String> tagToValueMap = new TreeMap<String, String>();
+            for (Map.Entry<String,SectionAnnotation> entry:secAnnotations.entrySet()) {
+                SectionAnnotation ann = entry.getValue();
+
+                String sectionId = entry.getKey();
+                
+                //  TODO: No need for this in future
+                sectionId = sectionId.substring(0, sectionId.indexOf(':'));
+
+                String commentTag = "{{"+sectionId+":comment}}";
+                tagToValueMap.put(commentTag, ann.getComments());
+
+                String markTag = "{{"+sectionId+":mark}}";;
+                tagToValueMap.put(markTag, Double.toString(ann.getMark()));
+                
+                totalMark += ann.getMark();
+            }
+            
+            String name = file.getParentFile().getName();
+            
+            //  TODO: No need of this in future
+            name = name.substring(name.indexOf('-')+1);
+            
+            tagToValueMap.put("{{name}}", name);
+            tagToValueMap.put("{{total}}", Double.toString(totalMark));
+            if (studentIds!=null && studentIds.containsKey(name)) {
+                tagToValueMap.put("{{studentID}}", studentIds.get(name));
+            } else {
+                System.out.println(">>ID of "+name+" not found.");
+            }
+            
+            Range range = inputSheet.getRange();
+            for (int p=0; p<range.numParagraphs(); ++p) {
+                Paragraph paragraph = range.getParagraph(p);
+                
+                String text = paragraph.text();
+                
+                Matcher matcher = TAG_PATTERN.matcher(text);
+                while (matcher.find()) {
+                    String match = matcher.group();
+                    
+                    String value = "";
+                    if (tagToValueMap.containsKey(match)) {
+                        value = tagToValueMap.get(match);
+                    }
+                    
+                    paragraph.replaceText(match, value);
+                }
+            }
+            
+            File outMarksheetFile = new File(file.getParent(), name+".doc");
+            inputSheet.write(new FileOutputStream(outMarksheetFile));
+        } finally {
+            templateInput.close();
+        }
     }
     
 }

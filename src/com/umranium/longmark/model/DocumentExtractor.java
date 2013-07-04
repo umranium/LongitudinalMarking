@@ -23,7 +23,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
@@ -37,7 +39,6 @@ import org.apache.pdfbox.util.PDFImageWriter;
 public class DocumentExtractor {
     
     private static final int DEFAULT_USER_SPACE_UNIT_DPI = 72;
-    private static final String FIRST_SEGMENT_ID = "First Segment";
     
     private String source;
     private File pdfFile;
@@ -66,7 +67,8 @@ public class DocumentExtractor {
             int startPage, double startY,
             int endPage, Double endY) {
         PrintStream out = System.out;
-        out.println("Extract section '"+splitId+"' from [page=" + startPage + ", y=" + startY
+        out.println("Extract section '"+splitId+"' from [page=" +
+                startPage + ", y=" + startY
                 + "] to [page=" + endPage + ", y=" + endY + "]");
         List<BufferedImage> images = new ArrayList<BufferedImage>();
         for (int pg = startPage; pg <= endPage; ++pg) {
@@ -219,7 +221,7 @@ public class DocumentExtractor {
             
             int startPage = 0;
             double startY = 0.0;
-            String splitterId = FIRST_SEGMENT_ID;
+            String splitterId = Constants.FIRST_SEGMENT_ID;
             if (lastMatch!=null) {
                 startPage = lastMatch.page;
                 startY = lastMatch.y;
@@ -237,7 +239,7 @@ public class DocumentExtractor {
             int startPage = 0;
             double startY = 0.0;
             int lastPage = pageCount-1;
-            String splitterId = FIRST_SEGMENT_ID;
+            String splitterId = Constants.FIRST_SEGMENT_ID;
             if (lastMatch!=null) {
                 startPage = lastMatch.page;
                 startY = lastMatch.y;
@@ -249,119 +251,23 @@ public class DocumentExtractor {
                     lastPage, null);
         }
         
-        
-        /*
-        int currentSplitter = 0;
-        TextLocation lastMatch = null;
-        
-        while (currentSplitter<splitters.length) {
-            Splitter splitter = splitters[currentSplitter];
-            
-            //System.out.println("Looking for '"+splitter.text+"'");
-            
-            List<TextLocation> txtLocs = new ArrayList<>();
-            int startSearchPage = 0;
-            if (lastMatch!=null) {
-                startSearchPage = lastMatch.page;
+        //  find and add all the sections that weren't found
+        Set<String> foundSections = new TreeSet<String>();
+        for (DocumentSection section:documentSections) {
+            foundSections.add(section.getId());
+        }
+        for (Splitter splitter:splitters) {
+            if (!foundSections.contains(splitter.id)) {
+                DocumentSection section = new DocumentSection(
+                        splitter.id, pdfText, extrasStorage,
+                        Collections.EMPTY_LIST, scale);
+                documentSections.add(section);
             }
-            for (int page=startSearchPage; page<pageCount; ++page) {
-                double minX, maxX;
-                double minY, maxY;
-                
-                PageSizing pageSizing = pdfText.getPageSizing(page);
-                
-                if (splitter.minX!=null) {
-                    minX = pageSizing.toPdfXCoord(splitter.minX, splitter.templateWidth);
-                } else {
-                    minX = Double.NEGATIVE_INFINITY;
-                }
-
-                if (splitter.maxX!=null) {
-                    maxX = pageSizing.toPdfXCoord(splitter.maxX, splitter.templateWidth);
-                } else {
-                    maxX = Double.POSITIVE_INFINITY;
-                }
-                
-                maxY = Double.POSITIVE_INFINITY;
-                if (lastMatch!=null && page==lastMatch.page) {
-                    minY = lastMatch.y2;
-                } else {
-                    minY = Double.NEGATIVE_INFINITY;
-                }
-                
-                List<TextLocation> tmpLocs = pdfText.findAllText(
-                         page, minX, minY, maxX, maxY);
-                txtLocs.addAll(tmpLocs);
-                
-                //System.out.println("Page: "+page);
-                for (TextLocation loc:tmpLocs) {
-                    loc.page = page;
-//                    System.out.println("\t"+loc.page);
-//                    System.out.println("\t'"+loc.text+"'");
-                }
-            }
-            
-            if (txtLocs.isEmpty()) {
-                throw new MissingSplitter(splitter);
-            }
-            List<MatchedText> matches = pdfText.findTextIn(txtLocs, woWs(splitter.text));
-            if (matches.isEmpty()) {
-                throw new MissingSplitter(splitter);
-            }
-            
-            
-            TextLocation currentMatch = matches.get(0).textLocation;
-            {
-                PageSizing pageSizing = pdfText.getPageSizing(currentMatch.page);
-                if (splitter.height!=null) {
-                    currentMatch.y = currentMatch.y2 - 
-                            pageSizing.toPdfYCoord(splitter.height,
-                            splitter.templateHeight);
-                }
-                if (splitter.topPadding!=null) {
-                    double padding = pageSizing.toPdfYCoord(splitter.topPadding,
-                            splitter.templateHeight);
-                    currentMatch.y += padding;
-                    currentMatch.y2 += padding;
-                }
-            }
-            //System.out.println("Match for splitter "+splitter.id+": "+splitter.text);
-            //System.out.println("\t"+currentMatch.text);
-            
-            int startPage = 0;
-            double startY = 0.0;
-            String splitterId = FIRST_SEGMENT_ID;
-            if (lastMatch!=null) {
-                startPage = lastMatch.page;
-                startY = lastMatch.y;
-                splitterId = splitters[currentSplitter-1].id;
-            }
-            extractSection(pdfText, pageImages,
-                    scale, splitterId,
-                    startPage, startY,
-                    currentMatch.page, currentMatch.y);
-            lastMatch = currentMatch;
-            ++currentSplitter;
         }
         
-        {
-            int startPage = 0;
-            double startY = 0.0;
-            int lastPage = pageCount-1;
-            String splitterId = FIRST_SEGMENT_ID;
-            if (lastMatch!=null) {
-                startPage = lastMatch.page;
-                startY = lastMatch.y;
-                splitterId = splitters[currentSplitter-1].id;
-            }
-            extractSection(pdfText, pageImages,
-                    scale, splitterId,
-                    startPage, startY,
-                    lastPage, null);
-        }
-        */
-        
-        return new Document(source, documentSections);
+        return new Document(source,
+                Collections.singletonList(extrasStorage),
+                documentSections);
     }
     
     

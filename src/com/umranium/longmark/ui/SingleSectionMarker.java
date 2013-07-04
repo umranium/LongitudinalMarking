@@ -133,7 +133,9 @@ public class SingleSectionMarker extends javax.swing.JFrame {
         commentsPanel.add(jPanel2, java.awt.BorderLayout.PAGE_START);
 
         commentsTxt.setColumns(20);
+        commentsTxt.setLineWrap(true);
         commentsTxt.setRows(5);
+        commentsTxt.setWrapStyleWord(true);
         jScrollPane1.setViewportView(commentsTxt);
 
         commentsPanel.add(jScrollPane1, java.awt.BorderLayout.CENTER);

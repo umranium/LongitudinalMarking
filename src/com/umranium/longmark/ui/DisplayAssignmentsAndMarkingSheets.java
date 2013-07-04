@@ -159,6 +159,8 @@ public class DisplayAssignmentsAndMarkingSheets {
             @Override
             public void run() {
                 MainFrame mainFrame = new MainFrame();
+                mainFrame.addSections(ASSIGNMENT_SPLITTERS);
+                mainFrame.addSections(MARK_SHEET_SPLITTERS);
                 mainFrame.setVisible(true);
                 mainFrame.addDocuments(documents);
             }

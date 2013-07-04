@@ -34,7 +34,7 @@ import java.util.TreeMap;
  */
 public class DocSecGridPanel extends javax.swing.JPanel {
     
-    public static final int NOTE_TEXT_COLS = 40;
+    public static final int NOTE_TEXT_COLS = 25;
     public static final int NOTE_TEXT_ROWS = 10;
     
     private class GridSection {
@@ -77,6 +77,15 @@ public class DocSecGridPanel extends javax.swing.JPanel {
         });
         documentSectionPanelGrid = new ArrayList<List<GridSection>>();
     }
+    
+    public void addSections(List<String> sectionIds) {
+        for (String sectionId : sectionIds) {
+            int row = sectionRows.size();
+            if (!sectionRows.containsKey(sectionId)) {
+                sectionRows.put(sectionId, row);
+            }
+        }
+    }
 
     public double getScale() {
         return scale;
@@ -112,13 +121,24 @@ public class DocSecGridPanel extends javax.swing.JPanel {
         List<GridSection> docSectionsColumn = new ArrayList<GridSection>();
         
         int column = documentColumns.size();
+        Map<String,DocumentSection> sectionMapping = new TreeMap<String, DocumentSection>();
         
-        for (final DocumentSection section:sections) {
-            int row = sectionRows.size();
-            if (sectionRows.containsKey(section.getId())) {
-                row = sectionRows.get(section.getId());
-            } else {
-                sectionRows.put(section.getId(), row);
+        for (String section:sectionRows.keySet()) {
+            sectionMapping.put(section, null);
+        }
+        for (DocumentSection section:sections) {
+            if (!sectionRows.containsKey(section.getId())) {
+                throw new RuntimeException("Unknown section '"+section.getId()+"'");
+            }
+            sectionMapping.put(section.getId(), section);
+        }
+        
+        for (Map.Entry<String,DocumentSection> entry:sectionMapping.entrySet()) {
+            final DocumentSection section = entry.getValue();
+            int row = sectionRows.get(entry.getKey());
+            
+            if (section==null) {
+                continue;
             }
             
             final DocSecPanel panel = new DocSecPanel(section, bgImageLoader);
@@ -128,8 +148,6 @@ public class DocSecGridPanel extends javax.swing.JPanel {
             gbc.fill = GridBagConstraints.NONE;
             gbc.insets = new Insets(5, 5, 5, 5);
             this.add(panel, gbc);
-            
-            //Dimension panelSize = panel.getPreferredSize();
             
             final MarkingPanel markingPanel = new MarkingPanel(
                     section, NOTE_TEXT_COLS, NOTE_TEXT_ROWS);

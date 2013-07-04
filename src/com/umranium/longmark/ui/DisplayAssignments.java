@@ -117,6 +117,7 @@ public class DisplayAssignments {
             @Override
             public void run() {
                 MainFrame mainFrame = new MainFrame();
+                mainFrame.addSections(SPLITTERS);
                 mainFrame.setVisible(true);
                 mainFrame.addDocuments(documents);
             }
